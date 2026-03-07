@@ -1,0 +1,37 @@
+FUNCTION FB_Test
+VAR_INPUT
+    MaxValue : INT := 10;
+END_VAR
+
+VAR_OUTPUT
+    Result : INT;
+END_VAR
+
+VAR
+    i : INT ;
+END_VAR
+
+BEGIN
+
+
+    Result := 0;
+
+    FOR i := 0 TO MaxValue BY 1 DO
+
+        IF i > 5 THEN
+
+            IF (i MOD 2) = 0 THEN
+
+                Result := Result + i;
+            ELSE
+                Result := Result + 1;
+            END_IF;
+        ELSE
+
+            Result := Result + 0;
+            Result := Result + 0;
+        END_IF;
+
+    END_FOR;
+
+END_FUNCTION_BLOCK
