@@ -2,10 +2,65 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 
-import copy
 import Baustein_manager
 
+class LineNumbers(tk.Canvas):
+
+    def __init__(self, parent, textwidget):
+        super().__init__(parent, width=50)
+        self.textwidget = textwidget
+        self.breakpoints = set()
+
+    def redraw(self):
+
+        self.delete("all")
+
+        i = self.textwidget.index("@0,0")
+
+        while True:
+
+            dline = self.textwidget.dlineinfo(i)
+
+            if dline is None:
+                break
+
+            y = dline[1]
+            linenum = int(str(i).split(".")[0])
+
+            # Breakpoint-Kreis
+            if linenum in self.breakpoints:
+                self.create_oval(
+                    5,
+                    y + 2,
+                    15,
+                    y + 12,
+                    fill="red",
+                    outline=""
+                )
+
+            # Zeilennummer
+            self.create_text(
+                40,
+                y,
+                anchor="ne",
+                text=str(linenum),
+                fill="black"
+            )
+
+            i = self.textwidget.index(f"{i}+1line")
+
 class SCLDebuggerGUI:
+    def sync_scroll(self, *args):
+        self.text.yview(*args)
+        self.text_python.yview(*args)
+
+    def on_mousewheel(self, event):
+
+        self.text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        self.text_python.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        return "break"
+
     def __init__(self, root):
         self.root = root
         self.root.title("SCL Step Debugger")
@@ -16,9 +71,10 @@ class SCLDebuggerGUI:
         with open("text", "r", encoding="utf-8") as f:
             full_scl = f.read().splitlines()
 
-        # nur Runtime-SCL anzeigen
         self.manager = Baustein_manager.mager()
         self.manager.Baustein_hinzufügen(full_scl)
+        self.breakpoints = set()  # z.B. {3, 7, 12}
+
         # -------------------------------------------------
         # Layout
         # -------------------------------------------------
@@ -34,24 +90,89 @@ class SCLDebuggerGUI:
         # -------------------------------------------------
         # Codefenster (SCL)
         # -------------------------------------------------
+        self.scl_frame = ttk.Frame(code_frame)
+        self.scl_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            self.scl_frame,
+            text="SCL Code",
+            font=("Arial", 10, "bold")
+        ).pack(anchor="w")
+
+        scl_inner = ttk.Frame(self.scl_frame)
+        scl_inner.pack(fill=tk.BOTH, expand=True)
+
+        self.line_numbers = LineNumbers(scl_inner, None)
+        self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
+
+
+        self.line_numbers.bind("<Button-1>", self.toggle_breakpoint)
+
         self.text = tk.Text(
-            code_frame,
-            width=90,
-            height=30,
-            font=("Consolas", 11),
-            state=tk.NORMAL
+            scl_inner,
+            font=("Consolas", 11)
         )
+
         self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        scrollbar = ttk.Scrollbar(code_frame, command=self.text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.text.config(yscrollcommand=scrollbar.set)
+        self.line_numbers.textwidget = self.text
+        self.scrollbar = ttk.Scrollbar(
+            scl_inner,
+            command=self.text.yview
+        )
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.text.tag_config("current", background="#ffe066")
+        self.text.config(yscrollcommand=self.scrollbar.set)
+        self.text.bind("<KeyRelease>", lambda e: self.line_numbers.redraw())
+        self.text.bind("<MouseWheel>", lambda e: self.line_numbers.redraw())
+        self.text.bind("<Button-1>", lambda e: self.line_numbers.redraw())
+
+        self.text.tag_config("current", background="#ffe066")  # ← hinzufügen
+
+        self.text.tag_config("breakpoint", background="red")
+        # -------------------------------------------------
+        # Codefenster (python)
+        # -------------------------------------------------
+        self.python_frame = ttk.Frame(code_frame)
+        self.python_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        ttk.Label(
+            self.python_frame,
+            text="Python Code",
+            font=("Arial", 10, "bold")
+        ).pack(anchor="w")
+
+        py_inner = ttk.Frame(self.python_frame)
+        py_inner.pack(fill=tk.BOTH, expand=True)
+
+        self.text_python = tk.Text(
+            py_inner,
+            font=("Consolas", 11)
+        )
+        self.text_python.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
 
-        self.text.config(state=tk.DISABLED)
+        self.text_python.tag_config("current", background="#c6f5ff")
 
+        #scrollbar
+
+        self.scrollbar_py = ttk.Scrollbar(
+            py_inner,
+            command=self.text_python.yview
+        )
+        self.scrollbar_py.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.text_python.config(yscrollcommand=self.scrollbar_py.set)
+
+        self.scrollbar.config(command=self.sync_scroll)
+        self.scrollbar_py.config(command=self.sync_scroll)
+
+        self.text.bind("<MouseWheel>", self.on_mousewheel)
+        self.text_python.bind("<MouseWheel>", self.on_mousewheel)
+
+        self.text.bind("<KeyRelease>", lambda e: self.line_numbers.redraw())
+        self.text.bind("<MouseWheel>", lambda e: self.line_numbers.redraw())
+        self.text.bind("<Button-1>", lambda e: self.line_numbers.redraw())
         # -------------------------------------------------
         # Variablenanzeige
         # -------------------------------------------------
@@ -65,7 +186,7 @@ class SCLDebuggerGUI:
             var_frame,
             width=35,
             height=25,
-            font=("Consolas", 10)
+            font=("Consolas", 11)
         )
         self.var_list.pack(fill=tk.BOTH, padx=5, expand=True)
 
@@ -96,6 +217,14 @@ class SCLDebuggerGUI:
             command=self.open_baustein_manager
         ).pack(side=tk.LEFT, padx=6)
 
+        self.show_python = tk.BooleanVar(value=True)
+        ttk.Checkbutton(
+            btn_frame,
+            text="Python anzeigen",
+            variable=self.show_python,
+            command=self.toggle_python
+        ).pack(side=tk.LEFT, padx=6)
+
         # Statuszeile
         # -------------------------------------------------
         # Initialanzeige
@@ -109,25 +238,39 @@ class SCLDebuggerGUI:
 
         self.reload_debugger()
         self.aufruf_liste = []
+
+
     # -------------------------------------------------
     # Anzeige
     # -------------------------------------------------
     def highlight_line(self):
 
+        # -------- SCL --------
         self.text.config(state=tk.NORMAL)
         self.text.tag_remove("current", "1.0", tk.END)
 
-        # Python-Zeile → Runtime-SCL-Zeile
-
         scl_line = self.manager.get_scl_line() + 1
-        start = f"{scl_line }.0"
-        end = f"{scl_line }.end"
+        start = f"{scl_line}.0"
+        end = f"{scl_line}.end"
+
         self.text.tag_add("current", start, end)
         self.text.see(start)
-
         self.text.config(state=tk.DISABLED)
+
+        # -------- Python --------
+        self.text_python.config(state=tk.NORMAL)
+        self.text_python.tag_remove("current", "1.0", tk.END)
+
+        py_line = self.manager.get_python_line() + 1
+        start = f"{py_line}.0"
+        end = f"{py_line}.end"
+
+        self.text_python.tag_add("current", start, end)
+        self.text_python.see(start)
+        self.text_python.config(state=tk.DISABLED)
+
         self.status_label.config(
-            text=f"Zeile: {scl_line}   (Trace-Step: {self.manager.current_step})"
+            text=f"SCL: {scl_line}  Python: {py_line}  (Trace-Step: {self.manager.current_step})"
         )
 
     def update_variables(self):
@@ -145,6 +288,22 @@ class SCLDebuggerGUI:
 
         self.update_variables()
         self.update_code_view() #später verlicht verbsseren
+        self.highlight_line()
+
+    def step_forward(self):
+
+        while True:
+
+            self.manager.step_forward()
+
+            line = self.manager.get_scl_line() + 1
+
+            if line in self.line_numbers.breakpoints:
+                break
+
+
+        self.update_variables()
+        self.update_code_view()
         self.highlight_line()
 
     def step_back(self):
@@ -176,6 +335,12 @@ class SCLDebuggerGUI:
         self.text.delete("1.0", tk.END)
         self.text.insert(tk.END, "\n".join(self.manager.get_SCL_text()))
         self.text.config(state=tk.DISABLED)
+        #python
+        self.text_python.config(state=tk.NORMAL)
+        self.text_python.delete("1.0", tk.END)
+        self.text_python.insert(tk.END, "".join(self.manager.get_Python_text()))
+        self.text_python.config(state=tk.DISABLED)
+
 
     def open_variable_editor(self):
         win = tk.Toplevel(self.root)
@@ -224,6 +389,26 @@ class SCLDebuggerGUI:
 
         win.destroy()
         self.reload_debugger()
+
+    def toggle_python(self):
+
+        if self.show_python.get():
+            self.python_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        else:
+            self.python_frame.pack_forget()
+
+    def toggle_breakpoint(self, event):
+
+        index = self.text.index(f"@0,{event.y}")
+        line = int(index.split(".")[0])
+
+        if line in self.line_numbers.breakpoints:
+            self.line_numbers.breakpoints.remove(line)
+        else:
+            self.line_numbers.breakpoints.add(line)
+
+        self.line_numbers.redraw()
 
     def open_baustein_manager(self):
         win = tk.Toplevel(self.root)
@@ -312,6 +497,7 @@ class SCLDebuggerGUI:
 
         self.manager.remove_selected_baustein(name)
         self.update_baustein_list()
+
 
 
 # -------------------------------------------------

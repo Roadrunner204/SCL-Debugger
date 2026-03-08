@@ -129,11 +129,11 @@ class mager:
         :return:
         """
         if Veriablen == None:
-             python_code ,self.zeilen_offset =Baustein_ausführen.python_code_erstellen(self.bausteine,self.baustein_name)
+             self.python_code ,self.zeilen_offset =Baustein_ausführen.python_code_erstellen(self.bausteine,self.baustein_name)
         else:
-            python_code, self.zeilen_offset = Baustein_ausführen.python_code_erstellen(self.bausteine,
+            self.python_code, self.zeilen_offset = Baustein_ausführen.python_code_erstellen(self.bausteine,
                                                                                       self.baustein_name,copy.deepcopy( Veriablen))
-        trace_ungefiltert = Baustein_ausführen.ausführen(python_code)
+        trace_ungefiltert = Baustein_ausführen.ausführen(self.python_code)
         self.Baustein = self.bausteine[self.baustein_name]
         self.trace = self.filter_trace(trace_ungefiltert)
 
@@ -207,4 +207,14 @@ class mager:
         :return: gibt die Veriablen aus den akulen schriet
         """
         return copy.deepcopy(self.trace[self.current_step]["locals"])
+
+    def get_python_line(self) -> int:
+        """Aktuelle Python-Zeile zum Highlight."""
+        step = self.trace[self.current_step]["line"] - 1
+        scl_line = step
+        return scl_line
+
+    def get_Python_text(self) -> list[str]:
+        """Gibt die gesamte generierte Python-Version der Runtime-SCL zurück."""
+        return self.python_code
 
