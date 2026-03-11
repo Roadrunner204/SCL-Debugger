@@ -26,6 +26,15 @@ def execute_with_trace(code: str):
     sys.settrace(tracer)
     try:
         exec(code, {})
+    except Exception as e:
+        # Drucke den Fehler
+        #print("Ein Fehler ist aufgetreten:")
+        #print(e)
+        temp = {}
+        temp["locals"] ={"Fehler" : "SyntaxError"}
+        temp["line"] = 1
+        trace_data.append(temp)
+        trace_data.append(temp)
     finally:
         sys.settrace(None)
 
@@ -85,10 +94,10 @@ def python_code_erstellen(bausteine: dict[str, Baustein], Baustein_name: str,Ver
     #  Haupt-SCL-Code INLINE (wichtig!)
     for line in bausteine[Baustein_name].cod:
         code += line + "\n"
-    #code = "ende = True"
-    print("start code")
-    print(code)
-    print("end code")
+    code += "ende = True # auto eingefügt"
+    #print("start code")
+    #print(code)
+    #print("end code")
     return code,zeilen
 
 def ausführen(python_code:str):
@@ -96,10 +105,6 @@ def ausführen(python_code:str):
 
     # Trace ausführen
     trace = execute_with_trace(python_code)
-    temp = {}
-    temp["locals"] =copy.deepcopy( trace[-1]["locals"])
-    temp["line"] = 1
-    # trace.append(temp)
     return trace
 
 

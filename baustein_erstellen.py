@@ -29,7 +29,6 @@ def extract_scl_runtime_code(text: list[str]) -> (list[str],int):
     """SCL-Code ab BEGIN bis vor END_FUNCTION_BLOCK"""
     code = []
     in_begin = False
-    Zeile = 1
     for line in text:
         if line.strip() == "BEGIN":
             in_begin = True
@@ -39,8 +38,7 @@ def extract_scl_runtime_code(text: list[str]) -> (list[str],int):
             break
 
         if in_begin:
-            code.append(f"{Zeile}{line}")
-            Zeile += 1
+            code.append(f"{line[4:]}")
 
     return code
 
@@ -262,6 +260,11 @@ def Baustein_erstellen(text:list[str],bausteine):
             speicher["temp"] = sammeln_Veriabeln(text, line + 1, länge)
         elif text[line] == "VAR":
             speicher["var"] = sammeln_Veriabeln(text, line + 1, länge)
+        elif text[line] == "VAR_IN_OUT":
+            inout = sammeln_Veriabeln(text, line + 1, länge)
+            speicher["input"] = speicher["input"] + inout
+            speicher["output"] = speicher["output"] + inout
+
         elif text[line] == "BEGIN":
             Baustein_list, code,Baustein_list_fehlend,Baustein_aufrufe,Veriabeln_zuordung= Baustein_erkennen.Baustein_erkennen(copy.deepcopy( text),line + 1,bausteine)
             code_block = überstzer_cod(code,line+1,länge,bausteine)

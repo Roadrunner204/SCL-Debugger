@@ -22,7 +22,10 @@ class LineNumbers(tk.Canvas):
             dline = self.textwidget.dlineinfo(i)
 
             if dline is None:
-                break
+                i = self.textwidget.index(f"{i}+1line")
+                if i == self.textwidget.index("end"):
+                    break
+                continue
 
             y = dline[1]
             linenum = int(str(i).split(".")[0])
@@ -173,6 +176,7 @@ class SCLDebuggerGUI:
         self.text.bind("<KeyRelease>", lambda e: self.line_numbers.redraw())
         self.text.bind("<MouseWheel>", lambda e: self.line_numbers.redraw())
         self.text.bind("<Button-1>", lambda e: self.line_numbers.redraw())
+
         # -------------------------------------------------
         # Variablenanzeige
         # -------------------------------------------------
@@ -202,6 +206,9 @@ class SCLDebuggerGUI:
             .pack(side=tk.LEFT, padx=6)
 
         ttk.Button(btn_frame, text="Vorwärts >>", command=self.step_forward)\
+            .pack(side=tk.LEFT, padx=6)
+
+        ttk.Button(btn_frame, text="zum-Punkt |->", command=self.to_next_point)\
             .pack(side=tk.LEFT, padx=6)
 
         ttk.Button(
@@ -238,7 +245,7 @@ class SCLDebuggerGUI:
 
         self.reload_debugger()
         self.aufruf_liste = []
-
+        self.root.after_idle(self.line_numbers.redraw)
 
     # -------------------------------------------------
     # Anzeige
@@ -290,17 +297,8 @@ class SCLDebuggerGUI:
         self.update_code_view() #später verlicht verbsseren
         self.highlight_line()
 
-    def step_forward(self):
-
-        while True:
-
-            self.manager.step_forward()
-
-            line = self.manager.get_scl_line() + 1
-
-            if line in self.line_numbers.breakpoints:
-                break
-
+    def to_next_point(self):
+        self.manager.to_next_point(self.line_numbers.breakpoints)
 
         self.update_variables()
         self.update_code_view()
@@ -326,6 +324,7 @@ class SCLDebuggerGUI:
         self.update_code_view()
         self.highlight_line()
         self.update_variables()
+        self.root.after_idle(self.line_numbers.redraw)
 
 
 
