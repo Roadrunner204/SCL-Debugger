@@ -9,6 +9,7 @@ from copy import deepcopy
 BLOCK_CALL_RE = re.compile(
     r"""
     ^
+    (?:\s*(?P<ret>\w+)\s*:=\s*)?
     (?P<name>\#?[A-Za-z_][A-Za-z0-9_]*)
     \s*
     \(
@@ -59,6 +60,7 @@ def detect_block_call(lines: list[str], i: int):
         return None
 
     name = m.group("name").lstrip("#")
+    ret = m.group("ret")
     if name.upper() in KEYWORDS:
         return None
 
@@ -69,8 +71,8 @@ def detect_block_call(lines: list[str], i: int):
     return {
         "instance": name,
         "type": block_type(name),
-        "call": call}
-
+        "call": call,
+        "return": ret}
 
 
 PARAM_RE = re.compile(
@@ -129,6 +131,10 @@ def Baustein_erkennen(cod: list[str],startwert:int,Bausteine) -> (list[object],l
         output = []
         for element in Bausteine[Baustein_SCL["instance"]].Veriablen_reinfolge_out:
             output.append(params[element])
+
+        if Baustein_SCL["return"]:
+            Veriabeln_zuordung[i - startwert][Baustein_SCL["return"]] = Baustein_SCL["return"]
+            output.append(Baustein_SCL["return"])
         funcion_start = Baustein_SCL["call"]["start"]
         funcion_end = Baustein_SCL["call"]["end"]
         cod[funcion_start] = f"{",".join(output)} := {Baustein_SCL["instance"]}({",".join(input_V)})"

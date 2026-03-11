@@ -218,3 +218,15 @@ class mager:
         """Gibt die gesamte generierte Python-Version der Runtime-SCL zurück."""
         return self.python_code
 
+    def to_next_point(self,breakpoints):
+
+        while self.current_step < len(self.trace) -1:
+
+            self.current_step += 1
+            line = self.get_scl_line() + 1
+
+            if line in breakpoints:
+                break
+
+
+
